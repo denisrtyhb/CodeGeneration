@@ -64,19 +64,32 @@ def create_dataset(input_path, output_path=None, verbose=False):
         gr = list(map(lambda x: x[:2], gr))
         print(*gr, sep='\n')
 
+
     def map_local_name(func_name):
         if func_name in local_paths:
             return f"{local_paths[func_name]}.{func_name}"
         else:
             return f"<unk>.{func_name}"
     grph = []
+
     for name, edges, node in graph:
         grph.append((
             map_local_name(name),
-            map(map_local_name, edges),
+            list(map(map_local_name, edges)),
             node
         ))
+
     graph = grph
+
+    unk_counter = 0
+    total_counter = 0
+    for name, edges, node in graph:
+        total_counter += len(edges)
+
+        indicator = lambda x: x.startswith("<unk>")
+        unk_counter += sum(map(indicator, edges))
 
     file_utils.save_graph_edges(graph, edges_path)
     file_utils.save_graph_nodes(graph, node_path)
+
+    print(f"Unks: {unk_counter}/{total_counter}")

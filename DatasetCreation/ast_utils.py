@@ -11,7 +11,9 @@ class CallFinderVisitor(ast.NodeVisitor):
         return self.call_array
 
     def visit_ClassDef(self, node):
-        assert False, "Classes are not supposed to appear in function definitions"
+        pass
+        warnings.warn("Detected class definition inside function definition")
+        # assert False, "Classes are not supposed to appear in function definitions"
 
     def visit_Call(self, node):
         self.call_array.append(get_full_attribute_name(node.func))

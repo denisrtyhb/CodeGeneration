@@ -3,12 +3,14 @@ import os
 
 from DatasetCreation.main import create_dataset
 
+from TrainModel.main import train_model
+
 def _create_dataset(dataset_path):
     create_dataset(dataset_path)
 
 
 def _train_model(model_path, dataset_path):
-    raise NotImplementedError()
+    train_model(dataset_path, model_path)
 
 
 def main():

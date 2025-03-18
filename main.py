@@ -9,8 +9,14 @@ def _create_dataset(dataset_path):
     create_dataset(dataset_path)
 
 
-def _train_model(model_path, dataset_path):
-    train_model(dataset_path, model_path)
+def _train_model(output_path, dataset_path, pretrain_model, lr, n_epochs):
+    train_model(
+        output_path=output_path,
+        input_path=dataset_path,
+        pretrain_model=pretrain_model,
+        lr=lr,
+        n_epochs=n_epochs,
+    )
 
 
 def main():
@@ -25,15 +31,26 @@ def main():
 
     # Train mode parser
     train_parser = subparsers.add_parser("train", help="Download and train model")
-    train_parser.add_argument("model_path", help="Path to store the downloaded model")
-    train_parser.add_argument("dataset_path", help="Path to the dataset to train on")
+    train_parser.add_argument("-o", "--output_path", help="Path to store the trained model", required=True)
+    train_parser.add_argument("--dataset_path", help="Path to the dataset to train on", required=True)
+    train_parser.add_argument("--pretrain_model", help="Name of hugging face model to load", required=True)
+
+    train_parser.add_argument("-lr", "--learning_rate", type=float, default=1e-4, help="learning rate")
+    train_parser.add_argument("-n", "--n_epochs", type=int, default=5, help="number of training epochs")
+
 
     args = parser.parse_args()
 
     if args.mode == "dataset":
         _create_dataset(args.dataset_path)
     elif args.mode == "train":
-        _train_model(args.model_path, args.dataset_path)
+        _train_model(
+            output_path=args.output_path,
+            dataset_path=args.dataset_path,
+            pretrain_model=args.pretrain_model,
+            lr=args.learning_rate,
+            n_epochs=args.n_epochs,
+        )
     else:
         parser.print_help()  # If no mode is specified, print help
 

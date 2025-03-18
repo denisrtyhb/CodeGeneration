@@ -12,15 +12,18 @@ def contrastive_loss(embeddings1, embeddings2, labels):
 
 
 def evaluate_batch(model, batch, device):
-    node1, node2, source_code1, source_code2 = batch
+    source_code1, msk1, source_code2, msk2 = batch
 
     source_code1 = source_code1.to(device)
+    msk1 = msk1.to(device)
+
     source_code2 = source_code2.to(device)
+    msk2 = msk2.to(device)
 
-    embeddings1 = model(source_code1)  # B x embedding_dim
-    embeddings2 = model(source_code2)  # B x embedding_dim
+    embeddings1 = model(source_code1, msk1)[0][:, 0]  # B x embedding_dim
+    embeddings2 = model(source_code2, msk2)[0][:, 0]  # B x embedding_dim
 
-    labels = torch.ones(len(node1)).to(device) # All pairs are connected - positive examples for the dataset
+    labels = torch.ones(len(msk1)).to(device) # All pairs are connected - positive examples for the dataset
 
     loss = contrastive_loss(embeddings1, embeddings2, labels)
 

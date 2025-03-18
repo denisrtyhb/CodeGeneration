@@ -24,26 +24,27 @@ class GraphDataset(Dataset):
 
         return node1, node2, source_code1, source_code2
 
-tokenizer = AutoTokenizer.from_pretrained("bert-base-uncased")
-def collate_fn(batch):
-    global tokenizer
+def make_collate_fn(tokenizer):
+    def collate_fn(batch):
 
-    strings1, strings2, strings3, strings4 = zip(*batch)
+        strings1, strings2, strings3, strings4 = zip(*batch)
 
-    tokenized_1 = tokenizer(list(strings1), padding=True, truncation=True, return_tensors="pt")
-    tokenized_2 = tokenizer(list(strings2), padding=True, truncation=True, return_tensors="pt")
-    tokenized_3 = tokenizer(list(strings3), padding=True, truncation=True, return_tensors="pt")
-    tokenized_4 = tokenizer(list(strings4), padding=True, truncation=True, return_tensors="pt")
+        tokenized_1 = tokenizer(list(strings1), padding=True, truncation=True, return_tensors="pt")
+        tokenized_2 = tokenizer(list(strings2), padding=True, truncation=True, return_tensors="pt")
+        tokenized_3 = tokenizer(list(strings3), padding=True, truncation=True, return_tensors="pt")
+        tokenized_4 = tokenizer(list(strings4), padding=True, truncation=True, return_tensors="pt")
 
-    return (
-        tokenized_1['input_ids'],
-        tokenized_2['input_ids'],
-        tokenized_3['input_ids'],
-        tokenized_4['input_ids']
-    )
+        return (
+            tokenized_3['input_ids'],
+            tokenized_3['attention_mask'],
+
+            tokenized_4['input_ids'],
+            tokenized_4['attention_mask'],
+        )
+    return collate_fn
 
 
-def get_dataloaders(edges_path, nodes_path, batch_size, validation_split=0.2, shuffle=True, random_seed=42):
+def get_dataloaders(edges_path, nodes_path, batch_size, tokenizer, validation_split=0.2, shuffle=True, random_seed=42):
 
     full_dataset = GraphDataset(edges_path, nodes_path)
 
@@ -56,6 +57,8 @@ def get_dataloaders(edges_path, nodes_path, batch_size, validation_split=0.2, sh
     train_dataset, val_dataset = random_split(full_dataset, [train_size, val_size], generator=generator)
 
     # Create the DataLoaders
+
+    collate_fn = make_collate_fn(tokenizer)
     train_loader = DataLoader(train_dataset, collate_fn=collate_fn, batch_size=batch_size, shuffle=shuffle)
     val_loader = DataLoader(val_dataset, collate_fn=collate_fn, batch_size=batch_size, shuffle=False) # No need to shuffle validation
 

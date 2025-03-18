@@ -41,7 +41,7 @@ def validate(model, val_loader, device):
     model.train()
     return avg_loss
 
-def train_model(model, optimizer, train_loader, val_loader, device, n_epochs=10):
+def train_model(model, optimizer, train_loader, val_loader, device, logger, n_epochs=10):
     model.train()  # Set the model to training mode
 
     epoch_loss = 0.0
@@ -60,6 +60,11 @@ def train_model(model, optimizer, train_loader, val_loader, device, n_epochs=10)
 
                 epoch_loss += loss.item()
                 train_loss_history.append(loss.item())
+
+                logger.log({
+                    "train_loss": loss.item(),
+                }, step=len(train_loss_history))
+
                 t.set_postfix(
                     train_loss=round(train_loss_history[-1], 2),
                     val_loss=round(val_loss_history[-1] if len(val_loss_history) > 0 else 0, 2)
@@ -68,6 +73,10 @@ def train_model(model, optimizer, train_loader, val_loader, device, n_epochs=10)
                 if len(train_loss_history) % 40 == 0:
                     val_loss = validate(model, val_loader, device)
                     val_loss_history.append(val_loss)
+
+                    logger.log({
+                        "val_loss": val_loss,
+                    }, step=len(train_loss_history))
                     # print(f"Epoch {epoch + 1} - Validation Loss: {val_loss:.4f}")
 
             avg_epoch_loss = epoch_loss / len(train_loader)

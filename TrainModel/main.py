@@ -1,4 +1,4 @@
-from TrainModel import dataset, train_utils
+from TrainModel import dataset, train_utils, logging
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -9,7 +9,7 @@ def load_model_and_tokenizer(model_name):
     model = AutoModel.from_pretrained(model_name)
     return model, tokenizer
 
-def train_model(input_path, output_path, pretrain_model, embedding_dim=10, batch_size=32, n_epochs=1, lr=0.001, validation_split=0.2):
+def train_model(input_path, output_path, pretrain_model, report_to=None, embedding_dim=10, batch_size=32, n_epochs=1, lr=0.001, validation_split=0.2):
     """
     Trains the model from scratch, saves it to the specified path.
 
@@ -23,6 +23,7 @@ def train_model(input_path, output_path, pretrain_model, embedding_dim=10, batch
         learning_rate (float): Learning rate for the optimizer.
         validation_split (float): Fraction of data to use for validation.
     """
+    logger = logging.load_logger(report_to)
 
     model, tokenizer = load_model_and_tokenizer(pretrain_model)
 
@@ -35,34 +36,12 @@ def train_model(input_path, output_path, pretrain_model, embedding_dim=10, batch
         validation_split=validation_split
     )
 
-    # Instantiate Model, Optimizer, and Device
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-
-    # class DummyModel(nn.Module):
-    #     def __init__(self, embedding_dim=10):
-    #         super().__init__()
-    #         self.embedding_dim = embedding_dim
-    #         self.linear = nn.Linear(100, embedding_dim) #Dummy operation simulating embedding
-
-    #     def forward(self, texts):
-    #         # Dummy operation. Replace with your actual model logic.
-    #         #  Convert texts into embeddings
-    #         #  For simplicity, let's just return random tensors of the required size
-    #         batch_size = len(texts)
-
-    #         #Simulate processing and create a dummy vector per source code
-    #         dummy_vectors = torch.randn(batch_size, 100)
-
-    #         embeddings = self.linear(dummy_vectors)
-    #         return embeddings
-    # model = DummyModel(embedding_dim=embedding_dim).to(device)
-
 
 
     optimizer = optim.Adam(model.parameters(), lr=lr)
 
-    # Train the Model
-    train_utils.train_model(model, optimizer, train_loader, val_loader, device, n_epochs)
+    train_utils.train_model(model, optimizer, train_loader, val_loader, device, logger, n_epochs)
 
     # Save the Trained Model
     torch.save(model.state_dict(), output_path)

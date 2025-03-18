@@ -1,0 +1,8 @@
+node1,node2
+f,f
+f,somelib.g
+f2,f
+Example.make_f,f
+Example2.__init__,Example1
+Example2.make_f2,f2
+Example2.make_f2,Example2.my_example.make_f

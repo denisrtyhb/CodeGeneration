@@ -1,0 +1,28 @@
+node,source_code
+base_utils.BaseClass.__init__,"def __init__(self, name):
+    self.name = name"
+base_utils.BaseClass.greet,"def greet(self):
+    return f'Hello from {self.name}!'"
+base_utils.add_numbers,"def add_numbers(x, y):
+    '''Adds two numbers together.'''
+    return x + y"
+base_utils.multiply_by_two,"def multiply_by_two(x):
+    '''Multiplies a number by two.'''
+    return x * 2"
+main.process_data,"def process_data(data):
+    '''Processes data using functions from base_utils.'''
+    doubled = multiply_by_two(data)
+    result = add_numbers(doubled, 5)
+    return result"
+main.create_and_greet,"def create_and_greet(name):
+    '''Creates an instance of BaseClass and returns its greeting.'''
+    obj = BaseClass(name)
+    return obj.greet()"
+main.main,"def main():
+    
+    data = 10
+    processed_value = process_data(data)
+    print(f'Processed value: {processed_value}')
+    
+    greeting = create_and_greet('MyObject')
+    print(greeting)"

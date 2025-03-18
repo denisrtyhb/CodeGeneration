@@ -1,0 +1,9 @@
+node1,node2
+main.process_data,base_utils.multiply_by_two
+main.process_data,base_utils.add_numbers
+main.create_and_greet,<unk>.BaseClass
+main.create_and_greet,<unk>.obj.greet
+main.main,main.process_data
+main.main,<unk>.print
+main.main,main.create_and_greet
+main.main,<unk>.print

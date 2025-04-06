@@ -1,6 +1,6 @@
 # Datasets
 models/
-bit_data/
+big_data/
 wandb/
 
 # Byte-compiled / optimized / DLL files

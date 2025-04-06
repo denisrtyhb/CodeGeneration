@@ -1,5 +1,5 @@
-# import DatasetCreation.file_utils
-from DatasetCreation import ast_utils, file_utils
+# import dataset_utils.file_utils
+from dataset_utils import ast_utils, file_utils
 
 import ast
 from astmonkey import visitors

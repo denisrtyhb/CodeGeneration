@@ -1,9 +1,9 @@
 import argparse
 import os
 
-from DatasetCreation.main import create_dataset
+from dataset_utils.main import create_dataset
 
-from TrainModel.main import train_model
+from train_utils.main import train_model
 
 def _create_dataset(dataset_path):
     create_dataset(dataset_path)

@@ -1,4 +1,4 @@
-from TrainModel import dataset, train_utils, logging
+from train_utils import dataset, train_utils, logging
 import torch
 import torch.nn as nn
 import torch.optim as optim

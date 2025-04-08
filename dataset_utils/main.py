@@ -19,13 +19,38 @@ def process_file(path, verbose=False):
     if verbose:
         for name, edges, node in graph:
             source = visitors.to_source(node).replace('\\', '').strip()
-            print("\n\n\n")
-            print("Source code:")
-            print(source)
-            print("Edges:")
-            print(name, "->", ', '.join(edges))
+            if verbose:
+                print("\n\n\n")
+                print("Source code:")
+                print(source)
+                print("Edges:")
+                print(name, "->", ', '.join(edges))
     return graph
 
+basic_functions = {
+    'set',
+    'split',
+    'min',
+    'max',
+    'int',
+    'str',
+    'zip',
+    'len',
+    'list',
+    'tuple',
+    'dict',
+    'range',
+    'enumerate',
+    'filter',
+    'map',
+    'sorted',
+    'sum',
+    'any',
+    'all',
+    'round',
+    'isinstance',
+    'getattr',    
+}
 
 def create_dataset(input_path, output_path=None, verbose=False):
     if output_path is None:
@@ -41,7 +66,6 @@ def create_dataset(input_path, output_path=None, verbose=False):
     for root, dirnames, filenames in os.walk(input_path):
         for filename in fnmatch.filter(filenames, '*.py'):
             files.append(os.path.join(root, filename))
-    print(files)
 
     local_paths = {}
     with tqdm(total=len(files), desc="", leave=True) as pbar:
@@ -64,10 +88,11 @@ def create_dataset(input_path, output_path=None, verbose=False):
         gr = list(map(lambda x: x[:2], gr))
         print(*gr, sep='\n')
 
-
     def map_local_name(func_name):
         if func_name in local_paths:
             return f"{local_paths[func_name]}.{func_name}"
+        elif func_name in basic_functions:
+            return func_name
         else:
             return f"<unk>.{func_name}"
     grph = []
@@ -93,3 +118,11 @@ def create_dataset(input_path, output_path=None, verbose=False):
     file_utils.save_graph_nodes(graph, node_path)
 
     print(f"Unks: {unk_counter}/{total_counter}")
+
+def create_multiple_datasets(input_path, output_path=None, verbose=False):
+    for folder in tqdm(os.listdir(input_path), desc="Listing datasets for loading"):
+        cur_folder = os.path.join(input_path, folder)
+        if output_path is None:
+            create_dataset(cur_folder, verbose=verbose)
+        else:
+            create_dataset(cur_folder, output_path=os.path.join(output_path, folder), verbose=verbose)

@@ -34,16 +34,15 @@ class GraphMakerVisitor(ast.NodeVisitor):
         pass
 
     def visit_ClassDef(self, node):
-        self.cur_class = node.name
         self.class_graph = []
         self.generic_visit(node)
 
         # post_processing
-        for name, edges, node in self.class_graph:
+        for name, edges, other_node in self.class_graph:
             self.graph.append((
                 name,
-                list(map(lambda x: x.replace("self", self.cur_class), edges)),
-                node
+                list(map(lambda x: x.replace("self", node.name), edges)),
+                other_node
             ))
         self.cur_class = None
 
@@ -57,83 +56,6 @@ class GraphMakerVisitor(ast.NodeVisitor):
             self.class_graph.append(entry)
         else:
             self.graph.append(entry)
-
-# def find_all_calls(node):
-#     function_calls = []
-#     if type(node) == ast.Call: 
-#         # Case 1: Function call
-#         if isinstance(node.func, ast.Name):
-#             function_calls.append(node.func.id)
-#         elif isinstance(node.func, ast.Attribute):
-#             # Handle module.submodule.f
-#             function_calls.append(get_full_attribute_name(node.func))
-#         else:
-#             warnings.warn("Detected other call type")
-#             function_calls.append("<unknown>")  # Handle other call types
-
-#         # Recursively process arguments
-#         for arg in node.args:
-#             function_calls.extend(find_all_function_calls_recursive(arg))
-
-#         for keyword in node.keywords:
-#             function_calls.extend(find_all_function_calls_recursive(keyword.value))
-#     # elif type(node) in [
-#     #     ast.BinOp,
-#     #     ast.UnaryOp,
-#     #     ast.BoolOp,
-#     #     ast.Compare
-#     # ]
-# def find_all_function_calls_recursive(node):
-#     function_calls = []
-
-#     if isinstance(node, ast.Call):
-#         # Case 1: Function call
-#         if isinstance(node.func, ast.Name):
-#             function_calls.append(node.func.id)
-#         elif isinstance(node.func, ast.Attribute):
-#             # Handle module.submodule.f
-#             function_calls.append(get_full_attribute_name(node.func))
-#         else:
-#             warnings.warn("Detected other call type")
-#             function_calls.append("<unknown>")  # Handle other call types
-
-#         # Recursively process arguments
-#         for arg in node.args:
-#             function_calls.extend(find_all_function_calls_recursive(arg))
-
-#         for keyword in node.keywords:
-#             function_calls.extend(find_all_function_calls_recursive(keyword.value))
-
-#     elif isinstance(node, ast.BinOp) or isinstance(node, ast.UnaryOp) or isinstance(node, ast.BoolOp) or isinstance(node, ast.Compare):
-
-#         for field, value in ast.iter_fields(node):
-#             if isinstance(value, list):
-#                 for item in value:
-#                     if isinstance(item, ast.AST): #Check for AST nodes
-#                         function_calls.extend(find_all_function_calls_recursive(item))
-#             elif isinstance(value, ast.AST):
-#               function_calls.extend(find_all_function_calls_recursive(value))
-
-#     elif isinstance(node, ast.If) or isinstance(node, ast.While) or isinstance(node, ast.For) or isinstance(node, ast.With): #Added control flow statements
-#         function_calls.extend(find_all_function_calls_recursive(node.test))
-#         function_calls.extend(find_all_function_calls_recursive(node.body))
-
-#     elif isinstance(node, ast.ListComp) or isinstance(node, ast.SetComp) or isinstance(node, ast.GeneratorExp) or isinstance(node, ast.DictComp): #Added comprehensions
-#         assert False
-
-#     elif isinstance(node, ast.Return): #Handle return statement
-#         if node.value:
-#             function_calls.extend(find_all_function_calls_recursive(node.value))
-#     elif type(node) in [ast.ImportFrom]:
-#         pass
-#     elif type(node) in [ast.Module, ast.FunctionDef]:
-#         for row in node.body:
-#             function_calls.extend(find_all_function_calls_recursive(row))
-#     else:
-#         warnings.warn("Strange node type " + str(type(node)))
-
-
-#     return function_calls
 
 def get_full_attribute_name(node):
     """

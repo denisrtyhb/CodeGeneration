@@ -6,10 +6,14 @@ from transformers import AutoModel, AutoTokenizer
 
 def load_model_and_tokenizer(model_name):
     tokenizer = AutoTokenizer.from_pretrained(model_name)
+    if not hasattr(tokenizer, 'pad_token'):
+        tokenizer.pad_token = tokenizer.eos_token
+
     model = AutoModel.from_pretrained(model_name)
+    print(model)
     return model, tokenizer
 
-def train_model(input_path, output_path, pretrain_model, report_to=None, embedding_dim=10, batch_size=32, n_epochs=1, lr=0.001, validation_split=0.2):
+def train_model(input_path, output_path, pretrain_model, report_to=None, embedding_dim=10, batch_size=32, n_epochs=1, lr=0.0001, validation_split=0.2):
     """
     Trains the model from scratch, saves it to the specified path.
 
@@ -29,16 +33,16 @@ def train_model(input_path, output_path, pretrain_model, report_to=None, embeddi
 
     # Create DataLoaders
     train_loader, val_loader = dataset.get_dataloaders(
-        f"{input_path}/edges.csv",
-        f"{input_path}/nodes.csv",
+        input_path,
         batch_size,
         tokenizer=tokenizer,
         validation_split=validation_split
     )
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    model.to(device)
 
-
+    print("Lr = ", lr)
     optimizer = optim.Adam(model.parameters(), lr=lr)
 
     train_utils.train_model(model, optimizer, train_loader, val_loader, device, logger, n_epochs)

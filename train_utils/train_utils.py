@@ -50,7 +50,7 @@ def validate(model, val_loader, device):
         for batch in val_loader:
             loss = evaluate_batch(model, batch, device)
             total_loss += loss.item()
-
+    print("Validation info:", total_loss, len(val_loader))
     avg_loss = total_loss / len(val_loader)
     model.train()
     return avg_loss
@@ -126,7 +126,7 @@ def train_model(model, optimizer, train_loader, val_loader, device, logger, n_ep
                 if len(train_loss_history) % 40 == 0:
                     val_loss = validate(model, val_loader, device)
                     val_loss_history.append(val_loss)
-
+                    print("val loss", val_loss)
                     logger.log({
                         "val_loss": val_loss,
                     }, step=len(train_loss_history))

@@ -11,15 +11,15 @@ class GraphDataset(Dataset):
     def __init__(self, edges_path, nodes_path):
         self.edges_df = pd.read_csv(edges_path)
         edges_count_before = len(self.edges_df)
+        unk_count = sum(self.edges_df['type'] == 'unknown')
         self.edges_df = self.edges_df[self.edges_df['type'] == 'dependent'].reset_index()
-        edges_count_after = len(self.edges_df)
 
         self.nodes_df = pd.read_csv(nodes_path)
         node_count = len(self.nodes_df)
         self.node_to_source = dict(zip(self.nodes_df['node'], self.nodes_df['source_code']))
 
         print(f"Loaded graph dataset. Number of nodes: {node_count}.",
-              f"Number of edges: {edges_count_after} normal out of {edges_count_before} total", sep='\n')
+              f"Number of unknowns: {unk_count} normal out of {edges_count_before} total", sep='\n')
 
     def __len__(self):
 

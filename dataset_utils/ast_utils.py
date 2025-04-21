@@ -1,87 +1,34 @@
 import ast
 import warnings
-
-class CallFinderVisitor(ast.NodeVisitor):
-    def __init__(self):
-        super().__init__()
-    def find_calls(self, node):
-        assert isinstance(node, ast.FunctionDef), ""
-        self.call_array = []
-        self.visit(node)
-        return self.call_array
-
-    def visit_ClassDef(self, node):
-        pass
-        warnings.warn("Detected class definition inside function definition")
-        # assert False, "Classes are not supposed to appear in function definitions"
-
-    def visit_Call(self, node):
-        self.call_array.append(get_full_attribute_name(node.func))
-        
-        self.generic_visit(node)
+import fnmatch
+import os
+from tqdm import tqdm
 
 class GraphMakerVisitor(ast.NodeVisitor):
     def __init__(self):
         super().__init__()
-        self.mini_visitor = CallFinderVisitor()
-    def construct_graph(self, node):
-        self.graph = []
+    def find_functions(self, node):
+        self.functions = []
         self.cur_class = None
         self.visit(node)
-        return self.graph
+        return self.functions
 
     def visit_Call(self, node):
         pass
 
     def visit_ClassDef(self, node):
-        self.class_graph = []
-        self.generic_visit(node)
 
-        # post_processing
-        for name, edges, other_node in self.class_graph:
-            self.graph.append((
-                name,
-                list(map(lambda x: x.replace("self", node.name), edges)),
-                other_node
-            ))
+        self.cur_class = node.name
+        self.generic_visit(node)
         self.cur_class = None
 
     def visit_FunctionDef(self, node):
-        entry = (
+        entry = [
             node.name if self.cur_class is None else f"{self.cur_class}.{node.name}",
-            self.mini_visitor.find_calls(node),
-            node
-        )
-        if self.cur_class:
-            self.class_graph.append(entry)
-        else:
-            self.graph.append(entry)
-
-def get_full_attribute_name(node):
-    """
-    Recursively constructs the full attribute name (e.g., module.submodule.f)
-    from an ast.Attribute node.
-    """
-
-    if isinstance(node, ast.Name):
-        return node.id
-    elif not isinstance(node, ast.Attribute):
-
-        warnings.warn("Detected other call type")
-        return "<unknown>"
-
-    parts = []
-    current = node
-
-    while isinstance(current, ast.Attribute):
-        parts.insert(0, current.attr)  # Add attribute name to the beginning
-        current = current.value # Move to the value
-
-    if isinstance(current, ast.Name):
-        parts.insert(0, current.id)  # Add the base name
-
-    return ".".join(parts)
-
+            "<SourceCode>",
+            "Description",
+        ]
+        self.functions.append(entry)
 def construct_ast_from_file(filename):
     try:
         with open(filename, 'r') as f:
@@ -101,63 +48,65 @@ def construct_ast_from_file(filename):
         print(f"An unexpected error occurred: {e}")
         return None
 
-def get_function_declarations(tree):
-    """
-    Extracts all function definitions (declarations) from an AST.
+def process_file(path, verbose=False):
+    ast_tree = construct_ast_from_file(path)
+    assert ast_tree, f"Failed to construct AST for {path}"
 
-    Args:
-      tree: The AST to traverse.
+    visitor = GraphMakerVisitor()
 
-    Returns:
-      A list of ast.FunctionDef nodes representing function declarations.
-    """
-    function_defs = []
-    for node in ast.walk(tree):
-        if isinstance(node, ast.FunctionDef):
-            function_defs.append(node)
-    return function_defs
-
-def get_imported_function_names(tree):
-    imported_functions = []
-
-    for node in ast.walk(tree):
-        if isinstance(node, ast.ImportFrom):
-            # Handles 'from module import name1, name2, ...'
-            module_name = node.module # The module imported from
-
-            for alias in node.names:
-                imported_functions.append(alias.name + "." + module_name)  # (function_name, module_name)
-
-        # elif isinstance(node, ast.Import):
-        #   # Handles 'import module as alias' or 'import module'
-        #   for alias in node.names:
-        #       # Look for usages of the imported module in calls
-        #       module_name = alias.name
-        #       module_alias = alias.asname if alias.asname else module_name #Alias if it exist, or module name
-
-        #       for sub_node in ast.walk(tree):
-        #           if isinstance(sub_node, ast.Call) and \
-        #               isinstance(sub_node.func, ast.Attribute) and \
-        #               isinstance(sub_node.func.value, ast.Name) and \
-        #               sub_node.func.value.id == module_alias:
-        #                   imported_functions.append((sub_node.func.attr, module_name))
+    vertices = visitor.find_functions(ast_tree)
+    return vertices
 
 
-    return imported_functions
+basic_functions = {
+    'set',
+    'split',
+    'min',
+    'max',
+    'int',
+    'str',
+    'zip',
+    'len',
+    'list',
+    'tuple',
+    'dict',
+    'range',
+    'enumerate',
+    'filter',
+    'map',
+    'sorted',
+    'sum',
+    'any',
+    'all',
+    'round',
+    'isinstance',
+    'getattr',    
+}
 
-def find_function_calls(function_body):
-    """
-    Finds all function calls within the body of a function (AST node).
+def get_vertices(path):
 
-    Args:
-      function_body: A list of AST nodes representing the body of a function.
+    files = []
+    for root, dirnames, filenames in os.walk(path):
+        for filename in fnmatch.filter(filenames, '*.py'):
+            files.append(os.path.join(root, filename))
 
-    Returns:
-      A list of ast.Call nodes representing function calls within the function.
-    """
-    function_calls = []
-    for node in function_body:  # Iterate over nodes in the function body
-        for sub_node in ast.walk(node):  # Walk the subtree rooted at each node
-            if isinstance(sub_node, ast.Call):
-                function_calls.append(sub_node)
-    return function_calls
+    all_vertices = []
+
+    local_paths = {}
+    with tqdm(total=len(files), desc="", leave=True) as pbar:
+        for filepath in files:
+            pbar.set_description(f"Processing {filepath}")
+            
+            assert filepath.endswith(".py")
+            local_path = filepath[len(path)+1:-3]
+            vertices = process_file(filepath)
+            
+            for entry in vertices:
+                all_vertices.append([
+                    f"{local_path}.{entry[0]}",
+                    entry[1],
+                    entry[2]
+                ])
+            pbar.update(1)
+
+    return all_vertices

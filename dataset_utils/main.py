@@ -5,119 +5,92 @@ import ast
 from astmonkey import visitors
 from tqdm import tqdm
 import os
-import fnmatch
 
+from dataset_utils.ast_utils import get_vertices
+from dataset_utils.svace_utils import get_svace_graph
 
-def process_file(path, verbose=False):
-    ast_tree = ast_utils.construct_ast_from_file(path)
-    assert ast_tree, f"Failed to construct AST for {path}"
+def rename_svace_graph(vertices, svace_graph):
+    svace_vertices = []
+    for entry in svace_graph:
+        svace_vertices.append(entry['function'])
+        map(svace_vertices.append, entry['callees'])
+    svace_vertices = list(set(svace_vertices))
+    print(svace_vertices[:5])
 
-    visitor = ast_utils.GraphMakerVisitor()
+    print()
 
-    graph = visitor.construct_graph(ast_tree)
+    print(vertices[:5])
 
-    if verbose:
-        for name, edges, node in graph:
-            source = visitors.to_source(node).replace('\\', '').strip()
-            if verbose:
-                print("\n\n\n")
-                print("Source code:")
-                print(source)
-                print("Edges:")
-                print(name, "->", ', '.join(edges))
+    short2normal = dict()
+    for func_name, _, _ in vertices:
+        i = func_name.rfind('/')
+        short2normal[func_name[i+1:]] = func_name
+
+    def rename_svace_vertex(name):
+        # name = 'f5d48c8d5cfdfd5f5762c34dac4a4e0795682ce4.constants.py:<module>:TableFormat'
+
+        parts = list(name.split(":")) # ['f5d48c8d5cfdfd5f5762c34dac4a4e0795682ce4.constants.py', '<module>', 'TableFormat']
+
+        parts[0] = list(parts[0].split('.'))[-2] # constants
+
+        assert "<module>" in parts
+        parts.remove("<module>")
+
+        func_name = name[name.rfind(":")+1:]
+        
+        guess1 = '.'.join(parts)
+        if guess1 in short2normal:
+            return short2normal[guess1]
+        
+        # print(name, end='\n\n')
+        return None
+
+    cringe2normal = dict(zip(
+        svace_vertices,
+        map(rename_svace_vertex, svace_vertices)
+    ))
+
+    def rename_svace_vertex_safe(name):
+        return cringe2normal.get(name, None)
+
+    if True:
+        count_none = sum(i is None for i in cringe2normal.values())
+        print("Nan count: ", count_none, "out of", len(svace_vertices))
+
+    new_svace_graph = []
+    for entry in svace_graph:
+        function = rename_svace_vertex_safe(entry['function'])
+
+        if function is None:
+            continue
+        callees = list(map(rename_svace_vertex_safe, entry['callees']))
+        print("Yesss", len(callees))
+        callees = list(filter(lambda x: x is not None, callees))
+
+        if len(callees) == 0:
+            continue
+        print("Yesss")
+        new_svace_graph.append([function, callees])
+
+    print(new_svace_graph[:5])
+    raise NotImplementedError("Need to merge different jsons")
     return graph
-
-basic_functions = {
-    'set',
-    'split',
-    'min',
-    'max',
-    'int',
-    'str',
-    'zip',
-    'len',
-    'list',
-    'tuple',
-    'dict',
-    'range',
-    'enumerate',
-    'filter',
-    'map',
-    'sorted',
-    'sum',
-    'any',
-    'all',
-    'round',
-    'isinstance',
-    'getattr',    
-}
 
 def create_dataset(input_path, output_path=None, verbose=False):
     if output_path is None:
         output_path = input_path
 
-
     edges_path = f"{output_path}/edges.csv"
     node_path = f"{output_path}/nodes.csv"
 
-    graph = []
 
-    files = []
-    for root, dirnames, filenames in os.walk(input_path):
-        for filename in fnmatch.filter(filenames, '*.py'):
-            files.append(os.path.join(root, filename))
+    vertices = get_vertices(input_path)
+    svace_graph = get_svace_graph(input_path)
+    svace_graph = rename_svace_graph(vertices=vertices, svace_graph=svace_graph)
 
-    local_paths = {}
-    with tqdm(total=len(files), desc="", leave=True) as pbar:
-        for filepath in files:
-            pbar.set_description(f"Processing {filepath}")
-            
-            local_path = filepath[len(input_path)+1:-3]
-            grph = process_file(filepath, verbose=verbose)
+    save_graph_edges(svace_graph, edges_path)
+    save_graph_nodes(vertices, node_path)
 
-            for name, edges, node in grph:
-                local_paths[name] = local_path
-                graph.append((
-                        name,
-                        edges,
-                        visitors.to_source(node).replace('\\', '').strip()
-                    ))
-            pbar.update(1)
-
-    def print_graph(gr):
-        gr = list(map(lambda x: x[:2], gr))
-        print(*gr, sep='\n')
-
-    def map_local_name(func_name):
-        if func_name in local_paths:
-            return f"{local_paths[func_name]}.{func_name}"
-        elif func_name in basic_functions:
-            return func_name
-        else:
-            return f"<unk>.{func_name}"
-    grph = []
-
-    for name, edges, node in graph:
-        grph.append((
-            map_local_name(name),
-            list(map(map_local_name, edges)),
-            node
-        ))
-
-    graph = grph
-
-    unk_counter = 0
-    total_counter = 0
-    for name, edges, node in graph:
-        total_counter += len(edges)
-
-        indicator = lambda x: x.startswith("<unk>")
-        unk_counter += sum(map(indicator, edges))
-
-    file_utils.save_graph_edges(graph, edges_path)
-    file_utils.save_graph_nodes(graph, node_path)
-
-    print(f"Unks: {unk_counter}/{total_counter}")
 
 def create_multiple_datasets(input_path, output_path=None, verbose=False):
     for folder in tqdm(os.listdir(input_path), desc="Listing datasets for loading"):

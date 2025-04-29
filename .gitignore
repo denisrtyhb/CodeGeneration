@@ -2,6 +2,7 @@
 models/
 big_data/
 wandb/
+.svace-dir
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

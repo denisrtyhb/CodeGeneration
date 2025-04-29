@@ -1,8 +1,36 @@
 import ast
+import astunparse
 import warnings
 import fnmatch
 import os
 from tqdm import tqdm
+
+def get_function_comment(function_node):
+    if function_node.body and function_node.body[0] and isinstance(function_node.body[0], ast.Expr) and isinstance(function_node.body[0].value, ast.Constant) and isinstance(function_node.body[0].value.value, str):
+        return function_node.body[0].value.value
+
+def get_function_code(function_node):
+    # Create a copy of the function node so we don't modify the original AST
+    function_copy = ast.copy_location(ast.FunctionDef(
+        name=function_node.name,
+        args=function_node.args,
+        body=[], # Empty the body initially; we'll populate it selectively
+        decorator_list=function_node.decorator_list,
+        returns=function_node.returns,
+        type_comment=function_node.type_comment
+    ), function_node)
+
+    # Iterate through the original function body and only add non-comment nodes to the copy
+    # for node in function_node.body:
+    #     if not (isinstance(node, ast.Expr) and isinstance(node.value, ast.Constant) and isinstance(node.value.value, str)): #Skip docstrings
+    #         function_copy.body.append(node)
+
+    try:
+        source_code = astunparse.unparse(function_copy)
+        return source_code.strip()  # Remove leading/trailing whitespace
+    except Exception as e:
+        print(f"Error unparsing function: {e}")
+        return None
 
 class GraphMakerVisitor(ast.NodeVisitor):
     def __init__(self):
@@ -25,8 +53,8 @@ class GraphMakerVisitor(ast.NodeVisitor):
     def visit_FunctionDef(self, node):
         entry = [
             node.name if self.cur_class is None else f"{self.cur_class}.{node.name}",
-            "<SourceCode>",
-            "Description",
+            get_function_code(node),
+            get_function_comment(node),
         ]
         self.functions.append(entry)
 def construct_ast_from_file(filename):
@@ -108,5 +136,5 @@ def get_vertices(path):
                     entry[2]
                 ])
             pbar.update(1)
-
+    
     return all_vertices

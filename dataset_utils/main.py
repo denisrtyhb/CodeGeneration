@@ -8,75 +8,116 @@ import os
 
 from dataset_utils.ast_utils import get_vertices
 from dataset_utils.svace_utils import get_svace_graph
+from dataset_utils.file_utils import save_graph_edges, save_graph_nodes
 
-def rename_svace_graph(vertices, svace_graph):
+
+def filter_garbage(svace_vertices):
+    
+    def not_init(vertice):
+        i = vertice.rfind(":")
+        last = vertice[i+1:]
+        return not vertice.startswith("$$") and not vertice.endswith("$$")
+    
+    def not_lambda(vertice):
+        i = vertice.rfind(":")
+        last = vertice[i+1:]
+        return last != "<lambda>"
+
+    def not_module(vertice):
+        i = vertice.rfind(":")
+        last = vertice[i+1:]
+        return last != "<module>"
+    
+    
+    def not_2(vertice):
+        i = vertice.rfind(":")
+        last = vertice[i+1:]
+        return last != "2"
+    
+    svace_vertices = filter(not_init, svace_vertices)
+    svace_vertices = filter(not_lambda, svace_vertices)
+    svace_vertices = filter(not_module, svace_vertices)
+
+
+    # TODO: Maybe it's not garbage. It's most confusing one
+    # 2e8ab3d43f274579bb6c6.page.py:<module>:Page:signatures:2 <- ????
+    svace_vertices = filter(not_2, svace_vertices)
+
+    return list(svace_vertices)
+
+
+def rename_svace_graph(svace_graph):
+    verbose = False
+
     svace_vertices = []
     for entry in svace_graph:
         svace_vertices.append(entry['function'])
         map(svace_vertices.append, entry['callees'])
     svace_vertices = list(set(svace_vertices))
-    print(svace_vertices[:5])
+    
+    if verbose:
+        print("Vertices before", *svace_vertices[:5], sep='\n')
 
-    print()
+    name2path = dict()
+    for entry in svace_graph:
+        name = entry['function']
+        path = entry['path']
 
-    print(vertices[:5])
+        true_name = name[name.find("<module>"):]
+        true_name = true_name[true_name.find(":")+1:]
+        true_name = true_name.replace(":", ".")
 
-    short2normal = dict()
-    for func_name, _, _ in vertices:
-        i = func_name.rfind('/')
-        short2normal[func_name[i+1:]] = func_name
-
-    def rename_svace_vertex(name):
-        # name = 'f5d48c8d5cfdfd5f5762c34dac4a4e0795682ce4.constants.py:<module>:TableFormat'
-
-        parts = list(name.split(":")) # ['f5d48c8d5cfdfd5f5762c34dac4a4e0795682ce4.constants.py', '<module>', 'TableFormat']
-
-        parts[0] = list(parts[0].split('.'))[-2] # constants
-
-        assert "<module>" in parts
-        parts.remove("<module>")
-
-        func_name = name[name.rfind(":")+1:]
-        
-        guess1 = '.'.join(parts)
-        if guess1 in short2normal:
-            return short2normal[guess1]
-        
-        # print(name, end='\n\n')
-        return None
-
-    cringe2normal = dict(zip(
-        svace_vertices,
-        map(rename_svace_vertex, svace_vertices)
-    ))
-
-    def rename_svace_vertex_safe(name):
-        return cringe2normal.get(name, None)
-
-    if True:
-        count_none = sum(i is None for i in cringe2normal.values())
-        print("Nan count: ", count_none, "out of", len(svace_vertices))
-
+        name2path[name] = path[:-2] + true_name
+    
     new_svace_graph = []
     for entry in svace_graph:
-        function = rename_svace_vertex_safe(entry['function'])
+        function = name2path[entry['function']]
 
-        if function is None:
-            continue
-        callees = list(map(rename_svace_vertex_safe, entry['callees']))
-        print("Yesss", len(callees))
+        # TODO: fix the cases where name2path does not have item
+        # Idk why that happens
+        callees = list(map(lambda x: name2path.get(x, None), entry['callees']))
         callees = list(filter(lambda x: x is not None, callees))
+
+        # callees = list(filter(lambda x: x is not None, callees))
 
         if len(callees) == 0:
             continue
-        print("Yesss")
+        # print("Yesss")
         new_svace_graph.append([function, callees])
+    
+    if verbose:
+        print("Vertices after", *new_svace_graph[:5], sep='\n')
 
-    print(new_svace_graph[:5])
-    raise NotImplementedError("Need to merge different jsons")
-    return graph
+    return new_svace_graph
+
+def get_svace_vertices(svace_graph):
+    all_svace_vertices = []
+    for i in svace_graph:
+        all_svace_vertices.append(i[0])
+        for j in i[1]:
+            all_svace_vertices.append(j)
+    all_svace_vertices = list(set(all_svace_vertices))
+    return all_svace_vertices
+
+def check_mapping_completeness(vertices, svace_graph):
+    
+    all_svace_vertices = get_svace_vertices(svace_graph)
+    all_vertices = list(map(lambda x: x[0], vertices))
+
+
+    print("Total svace vertices:", len(all_svace_vertices))
+    print("Total vertices:", len(all_vertices))
+
+    cnt = 0
+    for i in all_svace_vertices:
+        cnt += (i in all_vertices)
+    print("Intersection:", cnt)
+    print("Edges number:",
+          sum(map(lambda x: len(x[1]), svace_graph)))
+
 
 def create_dataset(input_path, output_path=None, verbose=False):
+    print("Current dataset:", input_path)
     if output_path is None:
         output_path = input_path
 
@@ -86,7 +127,25 @@ def create_dataset(input_path, output_path=None, verbose=False):
 
     vertices = get_vertices(input_path)
     svace_graph = get_svace_graph(input_path)
-    svace_graph = rename_svace_graph(vertices=vertices, svace_graph=svace_graph)
+    svace_graph = rename_svace_graph(svace_graph)
+
+    # print("\n\n\n")
+    # print("SVACE:", *svace_graph[:5], sep='\n')
+    # print('\n\n\n')
+    # print("REGULAR", *vertices[:5], sep='\n')
+
+    # good = lambda x: "s3_utils" in x[0]
+    # print("Trying to find:")
+    # print("\n")
+    # print("SVACE:", *list(filter(good, svace_graph[:5])), sep='\n')
+    # print('\n')
+    # print("REGULAR", *list(filter(good, vertices[:5])), sep='\n')
+
+
+    check_mapping_completeness(vertices, svace_graph)
+    svace_vertices = get_svace_vertices(svace_graph)
+
+    vertices = filter(lambda x: x in svace_vertices, vertices)
 
     save_graph_edges(svace_graph, edges_path)
     save_graph_nodes(vertices, node_path)

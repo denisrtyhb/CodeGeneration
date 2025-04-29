@@ -1,29 +1,18 @@
 import pandas as pd
 from astmonkey import visitors
 
-def save_graph_edges(graph, path):
-
-	all_names = list(map(lambda x: x[0], graph))
-
-	def identity_type(name1, name2):
-		if name2 in all_names:
-			return "dependent"
-		elif name2.startswith("<unk>"):
-			return "unknown"
-		else:
-			return "basic"
-
+def save_graph_edges(svace_graph, path):
 	arr = []
-	for name, edges, source_code in graph:
-		for name2 in edges:
-			arr.append((name, name2, identity_type(name, name2)))
+	for entry in svace_graph:
+		for callee in entry[1]:
+			arr.append((entry[0], callee, 0))
 	df = pd.DataFrame(arr, columns=['node1', 'node2', 'type'])
 	df.to_csv(path, index=False)
 
-def save_graph_nodes(graph, path):
+def save_graph_nodes(vertices, path):
 	arr = []
-	for name, edges, source_code in graph:
-		arr.append((name, source_code))
+	for name, source_code, description in vertices:
+		arr.append((name, source_code, description))
 
-	df = pd.DataFrame(arr, columns=['node', 'source_code'])
+	df = pd.DataFrame(arr, columns=['node', 'source_code', 'description'])
 	df.to_csv(path, index=False)

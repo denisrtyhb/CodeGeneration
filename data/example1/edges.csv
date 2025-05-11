@@ -1,0 +1,8 @@
+node1,node2
+1.f,1.f
+1.f,<unk>.somelib.g
+1.f2,1.f
+1.Example.make_f,1.f
+1.Example2.__init__,<unk>.Example1
+1.Example2.make_f2,1.f2
+1.Example2.make_f2,<unk>.Example2.my_example.make_f

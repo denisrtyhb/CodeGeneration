@@ -1,0 +1,16 @@
+node,source_code
+1.f,"def f(a):
+    if a == 123:
+        return f(10)
+    else:
+        return somelib.g(a)"
+1.f2,"def f2():
+    return f(123)"
+1.Example.__init__,"def __init__(self):
+    self.a = 1"
+1.Example.make_f,"def make_f(self):
+    return f(self.a)"
+1.Example2.__init__,"def __init__(self):
+    self.my_example = Example1()"
+1.Example2.make_f2,"def make_f2():
+    return f2(self.my_example.make_f())"
